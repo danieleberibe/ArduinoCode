@@ -13,6 +13,15 @@ SHTC3 g_shtc3;                  // Declare an instance of the SHTC3 class
 using namespace std::chrono_literals;
 using namespace std::chrono;
 
+// -------------------------- GPS --------------------------------------//
+#include <TinyGPS.h>    //http://librarymanager/All#TinyGPS
+
+TinyGPS gps;
+String tmp_data = "";
+int direction_S_N = 0;  //0--S, 1--N
+int direction_E_W = 0;  //0--E, 1--W
+// ---------------------------------------------------------------------//
+
 bool doOTAA = true;   // OTAA is used by default.
 #define SCHED_MAX_EVENT_DATA_SIZE APP_TIMER_SCHED_EVENT_DATA_SIZE /**< Maximum size of scheduler events. */
 #define SCHED_QUEUE_SIZE 60                      /**< Maximum number of events in the scheduler queue. */
@@ -193,6 +202,30 @@ void setup()
 }
 
 
+
+// ------------------------------------------------- GPS ------------------------------------------------- //
+void direction_parse(String tmp)
+{
+    if (tmp.indexOf(",E,") != -1)
+    {
+        direction_E_W = 0;
+    }
+    else
+    {
+        direction_E_W = 1;
+    }
+    
+    if (tmp.indexOf(",S,") != -1)
+    {
+        direction_S_N = 0;
+    }
+    else
+    {
+        direction_S_N = 1;
+    }
+}
+
+
 void loop()
 {
   // Every LORAWAN_APP_INTERVAL milliseconds send_now will be set
@@ -336,13 +369,84 @@ void data_get()
   uint16_t t = temp * 100;
   uint16_t h = hum * 100;
 
+
+  //-------------GPS-------------------
+   bool newData = false;
+  unsigned long chars;
+  unsigned short sentences, failed;
+
+  // For one second we parse GPS data and report some key values
+  for (unsigned long start = millis(); millis() - start < 1000;)
+  {
+    while (Serial1.available())
+    {
+      char c = Serial1.read();
+      tmp_data += c;
+      if (gps.encode(c))
+        newData = true;
+    }
+  }
+  direction_parse(tmp_data);
+  tmp_data = "";
+
+  float flat, flon;
+  int32_t ilat, ilon;
+
+
+  unsigned long age;
+  gps.f_get_position(&flat, &flon, &age);
+    
+  Serial.print("LAT=");
+  Serial.print(flat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flat, 6);
+  Serial.print(" | LON=");
+  Serial.print(flon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flon, 6);
+  Serial.printf("\n");
+  
+  flat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flat;
+  ilat = flat * 100000;
+  flon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : flon;
+  ilon = flon * 100000;
+  memset(m_lora_app_data.buffer, 0, LORAWAN_APP_DATA_BUFF_SIZE);
+  m_lora_app_data.port = gAppPort;
+
+
+
   //result: T=28.25C, RH=50.00%, P=958.57hPa, light=100.46 lux
   m_lora_app_data.buffer[0] = 0x02;
   m_lora_app_data.buffer[1] = (uint8_t)(t >> 8);
   m_lora_app_data.buffer[2] = (uint8_t)t;
   m_lora_app_data.buffer[3] = (uint8_t)(h >> 8);
   m_lora_app_data.buffer[4] = (uint8_t)h;
-  m_lora_app_data.buffsize = 5;
+  m_lora_app_data.buffer[5] = (ilat & 0xFF000000) >> 24;
+  m_lora_app_data.buffer[6] = (ilat & 0x00FF0000) >> 16;
+  m_lora_app_data.buffer[7] = (ilat & 0x0000FF00) >> 8;
+  m_lora_app_data.buffer[8] =  ilat & 0x000000FF;
+  if (direction_S_N == 0)
+  {
+    m_lora_app_data.buffer[9] = 'S';
+  }
+  else
+  {
+    m_lora_app_data.buffer[9] = 'N';
+  }
+  //lon data
+  m_lora_app_data.buffer[10] = (ilon & 0xFF000000) >> 24;
+  m_lora_app_data.buffer[11] = (ilon & 0x00FF0000) >> 16;
+  m_lora_app_data.buffer[12] = (ilon & 0x0000FF00) >> 8;
+  m_lora_app_data.buffer[13] =  ilon & 0x000000FF;
+  if (direction_E_W == 0)
+  {
+    m_lora_app_data.buffer[14] = 'E';
+  }
+  else
+  {
+    m_lora_app_data.buffer[14] = 'W';
+    }
+  gps.stats(&chars, &sentences, &failed);
+    if (chars == 0)
+      Serial.println("** No characters received from GPS: check wiring **");
+  
+  m_lora_app_data.buffsize = 15;
   for(int i = 0; i < m_lora_app_data.buffsize; i++)
     Serial.printf("%u\n", m_lora_app_data.buffer[i]);
 }
