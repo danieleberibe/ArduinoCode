@@ -3,6 +3,7 @@
 #include <SPI.h>
 
 #include <stdio.h>
+#include <mutex>
 
 #include "mbed.h"
 #include "rtos.h"
@@ -77,6 +78,20 @@ static uint32_t count_fail = 0;
 
 bool send_now = false;
 
+/*** blink ****/
+// Variables will change:
+int ledState = LOW;             // ledState used to set the LED
+
+// Generally, you should use "unsigned long" for variables that hold time
+// The value will quickly become too large for an int to store
+unsigned long previousMillis_lora = 0;        // will store last time LED was updated
+unsigned long previousMillis_send_frame = 0;        // will store last time LED was updated
+
+// constants won't change:
+const long interval_lora = 1000;           // interval at which to blink (milliseconds)
+const long interval_send_frame = 20000;           // interval at which to blink (milliseconds)
+/**************/
+
 void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -100,79 +115,24 @@ void setup()
   // Initialize LoRa chip.
   lora_rak11300_init();
 
+  digitalWrite(LED_BLUE, 1);
+
   Serial.println("=====================================");
   Serial.println("Welcome to RAK11300 LoRaWan!!!");
-  if (doOTAA)
-  {
-    Serial.println("Type: OTAA");
-  }
-  else
-  {
-    Serial.println("Type: ABP");
-  }
-
-  switch (g_CurrentRegion)
-  {
-    case LORAMAC_REGION_AS923:
-      Serial.println("Region: AS923");
-      break;
-    case LORAMAC_REGION_AU915:
-      Serial.println("Region: AU915");
-      break;
-    case LORAMAC_REGION_CN470:
-      Serial.println("Region: CN470");
-      break;
-    case LORAMAC_REGION_CN779:
-      Serial.println("Region: CN779");
-      break;
-    case LORAMAC_REGION_EU433:
-      Serial.println("Region: EU433");
-      break;
-    case LORAMAC_REGION_IN865:
-      Serial.println("Region: IN865");
-      break;
-    case LORAMAC_REGION_EU868:
-      Serial.println("Region: EU868");
-      break;
-    case LORAMAC_REGION_KR920:
-      Serial.println("Region: KR920");
-      break;
-    case LORAMAC_REGION_US915:
-      Serial.println("Region: US915");
-      break;
-    case LORAMAC_REGION_RU864:
-      Serial.println("Region: RU864");
-      break;
-    case LORAMAC_REGION_AS923_2:
-      Serial.println("Region: AS923-2");
-      break;
-    case LORAMAC_REGION_AS923_3:
-      Serial.println("Region: AS923-3");
-      break;
-    case LORAMAC_REGION_AS923_4:
-      Serial.println("Region: AS923-4");
-      break;
-  }
+  Serial.println("Type: OTAA");
+  Serial.println("Region: EU868");
   Serial.println("=====================================");
 
+  //gps init
+  pinMode(WB_IO2, OUTPUT);
 
-    Wire.begin();
-  Serial.println("shtc3 init");
-  Serial.print("Beginning sensor. Result = "); // Most SHTC3 functions return a variable of the type "SHTC3_Status_TypeDef" to indicate the status of their execution
-  errorDecoder(g_shtc3.begin());              // To start the sensor you must call "begin()", the default settings use Wire (default Arduino I2C port)
-  Wire.setClock(400000);                      // The sensor is listed to work up to 1 MHz I2C speed, but the I2C clock speed is global for all sensors on that bus so using 400kHz or 100kHz is recommended
-  Serial.println();
-
-  if (g_shtc3.passIDcrc)                      // Whenever data is received the associated checksum is calculated and verified so you can be sure the data is true
-  {                                           // The checksum pass indicators are: passIDcrc, passRHcrc, and passTcrc for the ID, RH, and T readings respectively
-    Serial.print("ID Passed Checksum. ");
-    Serial.print("Device ID: 0b");
-    Serial.println(g_shtc3.ID, BIN);          // The 16-bit device ID can be accessed as a member variable of the object
-  }
-  else
-  {
-    Serial.println("ID Checksum Failed. ");
-  }
+  digitalWrite(WB_IO2, 0);
+  delay(1000);
+  digitalWrite(WB_IO2, 1);
+  delay(1000);
+  Serial1.begin(9600);
+  while (!Serial1);
+  Serial.println("Gps started!");
 
 
   // Setup the EUIs and Keys
