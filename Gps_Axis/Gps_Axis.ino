@@ -38,7 +38,7 @@ int direction_E_W = 0;  //0--E, 1--W
 bool doOTAA = true;   // OTAA is used by default.
 #define SCHED_MAX_EVENT_DATA_SIZE APP_TIMER_SCHED_EVENT_DATA_SIZE /**< Maximum size of scheduler events. */
 #define SCHED_QUEUE_SIZE 60                     /**< Maximum number of events in the scheduler queue. */
-#define LORAWAN_DATERATE DR_0                   /*LoRaMac datarates definition, from DR_0 to DR_5*/
+#define LORAWAN_DATERATE DR_1                   /*LoRaMac datarates definition, from DR_0 to DR_5*/
 #define LORAWAN_TX_POWER TX_POWER_5             /*LoRaMac tx power definition, from TX_POWER_0 to TX_POWER_15*/
 #define JOINREQ_NBTRIALS 3                      /**< Number of trials for the join request. */
 DeviceClass_t gCurrentClass = CLASS_A;          /* class definition*/
@@ -48,7 +48,7 @@ uint8_t gAppPort = LORAWAN_APP_PORT;                      /* data port*/
 
 /**@brief Structure containing LoRaWan parameters, needed for lmh_init()
 */
-static lmh_param_t lora_param_init = {LORAWAN_ADR_ON, LORAWAN_DATERATE, LORAWAN_PUBLIC_NETWORK, JOINREQ_NBTRIALS, LORAWAN_TX_POWER, LORAWAN_DUTYCYCLE_OFF};
+static lmh_param_t lora_param_init = {LORAWAN_ADR_OFF, LORAWAN_DATERATE, LORAWAN_PUBLIC_NETWORK, JOINREQ_NBTRIALS, LORAWAN_TX_POWER, LORAWAN_DUTYCYCLE_OFF};
 
 // Foward declaration
 static void lorawan_has_joined_handler(void);
